@@ -1,0 +1,16 @@
+#!/bin/bash
+# Sfera OS — applica l'aspetto di Sfera al primo accesso di ogni utente.
+# Gira una sola volta per utente; poi ognuno è libero di cambiare tutto.
+
+SEGNO="${XDG_CONFIG_HOME:-$HOME/.config}/sfera/aspetto-applicato"
+[ -f "$SEGNO" ] && exit 0
+
+# Attende che il desktop sia pronto
+sleep 4
+
+plasma-apply-colorscheme SferaScuro || true
+plasma-apply-wallpaperimage /usr/share/wallpapers/Sfera/contents/images/3840x2160.png || true
+kwriteconfig6 --file kdeglobals --group General --key AccentColor "79,216,255" || true
+
+mkdir -p "$(dirname "$SEGNO")"
+touch "$SEGNO"

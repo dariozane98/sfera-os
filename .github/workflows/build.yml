@@ -1,0 +1,63 @@
+# Costruisce il sistema Sfera OS e lo pubblica su GitHub.
+# Parte da solo a ogni modifica, ogni notte (per gli aggiornamenti
+# di sicurezza di Fedora) oppure a mano dalla scheda "Actions".
+name: Costruisci Sfera OS
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+  schedule:
+    - cron: "15 4 * * *"
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: sfera-os
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Costruzione del sistema
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Libera spazio sul disco del server
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force || true
+          df -h /
+
+      - name: Scarica i file del progetto
+        uses: actions/checkout@v4
+
+      - name: Prepara il nome dell'immagine
+        run: echo "IMAGE_REGISTRY=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+      - name: Costruisci l'immagine
+        id: build
+        uses: redhat-actions/buildah-build@v2
+        with:
+          containerfiles: ./Containerfile
+          image: ${{ env.IMAGE_NAME }}
+          tags: latest ${{ github.sha }}
+          oci: false
+
+      - name: Accedi al registro di GitHub
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pubblica l'immagine
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}

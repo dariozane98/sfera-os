@@ -1,0 +1,11 @@
+# Configurazione dell'installer di Sfera OS.
+# Dopo l'installazione collega il sistema all'immagine pubblicata su
+# GitHub, così riceve gli aggiornamenti di Sfera OS (non di Fedora pura).
+# "__IMAGE_REF__" viene sostituito in automatico durante la creazione dell'ISO.
+
+[customizations.installer.kickstart]
+contents = """
+%post
+bootc switch --mutate-in-place --transport registry __IMAGE_REF__
+%end
+"""
